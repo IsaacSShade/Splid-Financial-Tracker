@@ -1,0 +1,13 @@
+{
+  "json.schemas": [
+    { "fileMatch": ["config/you.json"],         "url": "./schema/you.schema.json" },
+    { "fileMatch": ["config/income.json"],      "url": "./schema/income.schema.json" },
+    { "fileMatch": ["config/options.json"],     "url": "./schema/options.schema.json" },
+    { "fileMatch": ["config/bucket_map.json"],  "url": "./schema/bucket_map.schema.json" },
+    { "fileMatch": ["config/cc_match.json"],    "url": "./schema/cc_match.schema.json" },
+    { "fileMatch": ["config/cc_sources.json"],  "url": "./schema/cc_sources.schema.json" }
+  ],
+  "workbench.editorAssociations": {
+    "**/reports/*.md": "vscode.markdown.preview.editor"
+  }
+}

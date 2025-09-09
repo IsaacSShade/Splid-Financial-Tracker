@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "you.schema.json",
+  "title": "You Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Your display name exactly as it appears in the Splid export (used to read your per-person share).",
+      "examples": [
+        "Aiden"
+      ]
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "examples": [
+    {
+      "name": "Aiden"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "cc_match.schema.json",
+  "title": "Credit Card Match Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "amountToleranceCents": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Allowed absolute difference in cents between BoA amount and Splid amount. 0 = exact match only.",
+      "default": 0
+    },
+    "dateWindowDays": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Allowed absolute difference in days between BoA posting date and Splid date. 0 = same day only.",
+      "default": 0
+    },
+    "onlyIfPayerIsYou": {
+      "type": "boolean",
+      "description": "Require Splid payer to be your name to consider a match.",
+      "default": true
+    }
+  },
+  "required": [
+    "amountToleranceCents",
+    "dateWindowDays",
+    "onlyIfPayerIsYou"
+  ]
+}

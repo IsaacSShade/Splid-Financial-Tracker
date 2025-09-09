@@ -1,0 +1,6 @@
+{
+  "monthSelection": "previous_complete", 
+  "overrideMonth": "",
+  "backfillAll": true, 
+  "carryoverMode": "none"
+}
