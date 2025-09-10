@@ -137,8 +137,9 @@ def run_pipeline(cfg: UnifiedConfig):
         personal_spend_card=personal_spend_card,
       )
     
-    # Only show weekly plan in months where you had income
-    if income > 0:
+    # Only show weekly plan for the CURRENT calendar month
+    current_month = date.today().strftime("%Y-%m")
+    if month == current_month:
       forecasted_monthly_spend = forecast_monthly_spend(
         rows,   # normalized rows for all months
         month,  # "YYYY-MM"
