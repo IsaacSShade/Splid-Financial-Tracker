@@ -2,7 +2,8 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Iterable
+
 
 def ensure_dir(p: Path):
   p.mkdir(parents=True, exist_ok=True)
@@ -140,3 +141,77 @@ def write_overall_trends_md(reports_dir: Path, monthly_summary_path: Path):
     if any(vals):
       lines.append(f"- {b}: ${sum(vals)/len(vals):,.2f}")
   (reports_dir / "overall_trends.md").write_text("\n".join(lines), encoding="utf-8")
+  
+# --- Extra section writers ---
+
+def write_weekly_schedule_section(
+  reports_dir: Path,
+  month: str,
+  weekly_sched: Iterable,            # items with week_start, week_end, allowance
+  *,
+  meta: dict,                         # method + inputs for the explainer
+) -> None:
+  """
+  Appends a self-contained 'Weekly spending plan' section to <reports_dir>/<month>.md.
+  Only call this when the month has income > 0.
+  """
+  ensure_dir(reports_dir)
+  path = reports_dir / f"{month}.md"
+
+  forecast = float(meta.get("forecast_basis_usd", 0.0))
+  week_start = str(meta.get("week_start", "MON"))
+  ewma_alpha = meta.get("ewma_alpha", None)
+  seasonal_weight = meta.get("seasonal_weight", None)
+  window_months = meta.get("window_months", None)
+  outlier_method = meta.get("outlier_method", None)
+  outlier_k = meta.get("outlier_k", None)
+  exclude_buckets = meta.get("exclude_buckets") or []
+
+  lines = []
+  lines.append("")  # spacer
+  lines.append("## Weekly spending plan (shown only when you have income)\n")
+  lines.append(
+    f"_What this is:_ A planning target that splits your **forecasted discretionary spend for {month} "
+    f"(${forecast:,.2f})** evenly across calendar weeks starting **{week_start}**.\n"
+  )
+  lines.append(
+    "_How it’s estimated:_ recency-weighted average (EWMA"
+    + (f", α={ewma_alpha}" if ewma_alpha is not None else "")
+    + (f", window≈{window_months} mo" if window_months is not None else "")
+    + "), seasonal anchor to the **same month last year**"
+    + (f" (weight={seasonal_weight})" if seasonal_weight is not None else " (if available)")
+    + ", and outlier handling"
+    + (f" ({outlier_method}, k={outlier_k})" if outlier_method is not None else "")
+    + "."
+  )
+  lines.append(
+    "Excluded buckets from this forecast: "
+    + (", ".join(exclude_buckets) if exclude_buckets else "none")
+    + ".\n"
+  )
+
+  # Render as a table (clearer than bullets)
+  lines.append("| Week start | Week end | Allowance |")
+  lines.append("|---|---|---:|")
+  for w in weekly_sched:
+    lines.append(f"| {w.week_start.isoformat()} | {w.week_end.isoformat()} | ${w.allowance:,.2f} |")
+  lines.append("")
+
+  with path.open("a", encoding="utf-8") as f:
+    f.write("\n".join(lines))
+
+def write_card_summary_section(reports_dir: Path, month: str, *, house_on_card: float, personal_spend_card: float) -> None:
+  """
+  Optional panel showing a quick CC breakdown for the month.
+  """
+  ensure_dir(reports_dir)
+  path = reports_dir / f"{month}.md"
+  lines = []
+  lines.append("")  # spacer
+  lines.append("## Credit card summary\n")
+  lines.append(f"- **House charges on card (matched):** ${house_on_card:,.2f}")
+  lines.append(f"- **Personal spending on card:** ${personal_spend_card:,.2f}")
+  lines.append("")
+  with path.open("a", encoding="utf-8") as f:
+    f.write("\n".join(lines))
+

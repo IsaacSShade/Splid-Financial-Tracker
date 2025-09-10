@@ -1,0 +1,129 @@
+# ---------------------------------------------------------------------------
+# settings.yaml — single source of truth for Splid-Financial-Tracker
+# Notes:
+# - Paths are relative to repo root unless you make them absolute.
+# - Keys and structure must match exactly; the loader will error on missing sections.
+# - Buckets affect reporting breakdown only; payments are always excluded from “living”.
+# ---------------------------------------------------------------------------
+
+user:
+  # Your display name exactly as it appears in the Splid export header.
+  # Used to locate your per-person share column.
+  name: "Aiden"
+
+paths:
+  # Base directories. The pipeline resolves these from repo root.
+  # Do not add trailing slashes. Create them if they don’t exist.
+  inputs_dir: "inputs"     # Where Splid XLS and bank PDFs live
+  data_dir: "data"         # Where normalized CSVs & monthly_summary.csv are written
+  reports_dir: "reports"   # Where per-month and overall .md reports are written
+  config_dir: "config"     # This file’s directory (leave as "config")
+
+options:
+  # How to choose the target month when you didn’t specify an override:
+  # - "previous_complete": last *fully* completed calendar month (recommended)
+  # - "latest_any": the most recent month present in Splid rows
+  month_selection: "previous_complete"   # "previous_complete" | "latest_any"
+
+  # Pin the run to a specific month ("YYYY-MM"). Empty string disables the override.
+  override_month: ""                     # e.g., "2025-10" or ""
+
+  # If true, on first run process *all* months present in Splid (income may be 0 before start_date).
+  # If false, process only the chosen month from month_selection/override.
+  backfill_all: true
+
+  # Future: Adjust spending allowance by prior-month overspend.
+  # - "none": no carryover (current behavior)
+  # - "bank_csv": (planned) use bank data to compute carryover
+  carryover_mode: "none"                 # "none" | "bank_csv"
+
+income:
+  # Your pay rate in USD/hour.
+  hourly_rate: 50
+
+  # Hours assumed for each *work week* when no monthly override exists.
+  # Weekly weeks are counted by Mondays in the month (on/after start_date).
+  default_weekly_hours: 10
+
+  # YYYY-MM-DD. Months strictly before this date have income = 0.
+  start_date: "2025-09-01"
+
+  # Optional manual overrides: total hours per month.
+  # If present for a given "YYYY-MM", income = hourly_rate * hours_overrides[month].
+  hours_overrides: {}                    # e.g., {"2025-09": 30, "2025-10": 42}
+
+buckets:
+  # Map case-insensitive regex (matched against Splid “Title”) to a reporting bucket.
+  # Use '|' to combine synonyms. First match wins. Buckets are for breakdowns only.
+  title_to_bucket:
+    rent: "rent"
+    "wifi|internet|xfinity|comcast|spectrum": "utilities"
+    "electric|power|avista|pacific power|pse|light": "utilities"
+    "water|sewer|garbage|trash": "utilities"
+
+  # Map exact Splid “Category” values to a reporting bucket.
+  # If no match here, we fall back to the (possibly regex-mapped) title bucket or "uncategorized".
+  category_to_bucket:
+    Groceries: "groceries"
+    House Supplies: "house_supplies"
+    House bills: "house_bills"
+    "-": "uncategorized"
+
+  # Exact Titles that indicate settle-up/payment rows to exclude from living costs.
+  # Matching is case-insensitive in code.
+  payment_title_exact:
+    - "Payment"
+
+credit_card:
+  sources:
+    # Glob to your BoA statement PDFs. Can be absolute or relative to repo root.
+    pdf_statements_glob: "inputs/bank/*.pdf"
+
+    # If true, assign each card transaction to the month of its Posting Date.
+    # If false, use the Transaction Date. Posting is usually more stable.
+    use_posting_date_for_month: true
+
+  matching:
+    # Allowed absolute difference between BoA amount and Splid amount, in cents.
+    # 0 = exact match only.
+    amount_tolerance_cents: 0
+
+    # Allowed absolute difference between BoA posting date and Splid date, in days.
+    # 0 = same-day only.
+    date_window_days: 0
+
+    # If true, only consider Splid rows where payer == `user.name` for matching.
+    only_if_payer_is_you: true
+
+budgeting:
+  # Week start for splitting the monthly forecast into weekly allowances.
+  # One of: MON, TUE, WED, THU, FRI, SAT, SUN
+  week_start: "MON"
+
+  # If true, forecasts and summaries use *your* share; if false, use total amounts.
+  use_your_share: true
+
+  # Buckets to exclude from the *forecasted discretionary spend* (e.g., large fixeds like rent/tuition).
+  # These still appear in reporting; they’re just excluded from the weekly-planning baseline.
+  exclude_buckets: []        # e.g., ["rent", "tuition"]
+
+  # How many historical months to consider for forecasting (recency window).
+  window_months: 12
+
+  # Minimum months required to compute a robust forecast; if insufficient, falls back to a simple mean.
+  min_months: 6
+
+  # Seasonality anchor: weight on the same month from the previous year (if present).
+  # 0.0 disables; 0.25 mixes 25% last-year same-month with 75% recency signal.
+  seasonal_weight: 0.25
+
+  # Recency weight for EWMA (exponential weighted moving average). Higher = weight recent months more.
+  ewma_alpha: 0.5
+
+  # Outlier handling for historical months before computing the EWMA:
+  # - "mad": drop points beyond k * MAD (robust)
+  # - "winsor": clamp tails at +/- k * MAD (keeps length)
+  outlier_method: "mad"      # "mad" | "winsor"
+
+  # Outlier aggressiveness (k). Larger = less aggressive.
+  outlier_k: 3.5

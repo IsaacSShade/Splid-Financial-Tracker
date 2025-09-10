@@ -1,4 +1,0 @@
-{
-  "pdfStatementsGlob": "inputs/bank/*.pdf",
-  "usePostingDateForMonth": true
-}

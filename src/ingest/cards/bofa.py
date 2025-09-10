@@ -5,14 +5,7 @@ from typing import List, Iterable
 import re
 import pdfplumber
 from dateutil import parser as dup
-
-@dataclass
-class CCRow:
-    trans_date: str     # YYYY-MM-DD
-    post_date: str      # YYYY-MM-DD
-    description: str
-    amount: float       # +charges, -credits
-    section: str        # "payments_credits" | "purchases_adjustments"
+from core.models import CreditCardTransaction
 
 _DATE = r"(?:\d{1,2}/\d{1,2})"
 _AMT  = r"[-]?\$?\d{1,3}(?:,\d{3})*(?:\.\d{2})"
@@ -34,7 +27,7 @@ def _iter_text_lines(pdf_path: Path) -> Iterable[str]:
             for line in text.splitlines():
                 yield line.rstrip()
 
-def parse_statement_pdf(pdf_path: Path) -> List[CCRow]:
+def parse_statement_pdf(pdf_path: Path) -> List[CreditCardTransaction]:
     """
     Extracts transactions from a BoA statement PDF by scanning the 'Transactions' section.
     We detect two subsections: 'Payments and Other Credits' and 'Purchases and Adjustments'.
@@ -54,7 +47,7 @@ def parse_statement_pdf(pdf_path: Path) -> List[CCRow]:
         m = re.search(r"(\d{4})", " ".join(lines))
         year = int(m.group(1)) if m else dup.parse("2000-01-01").year
 
-    rows: List[CCRow] = []
+    rows: List[CreditCardTransaction] = []
     in_transactions = False
     in_section = None  # None | "payments_credits" | "purchases_adjustments"
 
@@ -85,7 +78,7 @@ def parse_statement_pdf(pdf_path: Path) -> List[CCRow]:
                     pr = _to_iso(post_m, year)
                     amt = _to_amount(amt_s)
                     # normalize sign: in BoA PDF amounts are already signed appropriately per section
-                    rows.append(CCRow(tr, pr, desc.strip(), amt, in_section))
+                    rows.append(CreditCardTransaction(tr, pr, desc.strip(), amt, in_section))
                 except Exception:
                     # tolerate weird lines
                     pass

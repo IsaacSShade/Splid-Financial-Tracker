@@ -21,10 +21,10 @@ def month_key(d) -> str:
 def build_bucket_resolvers(bucket_cfg) -> tuple:
   # Precompile regex rules for titleToBucket
   rules = []
-  for patt, bucket in bucket_cfg.titleToBucket.items():
+  for patt, bucket in bucket_cfg.title_to_bucket.items():
     rules.append( (re.compile(patt, re.IGNORECASE), bucket) )
-  cat_map = bucket_cfg.categoryToBucket
-  payment_titles = [t.lower() for t in bucket_cfg.paymentTitleExact]
+  cat_map = bucket_cfg.category_to_bucket
+  payment_titles = [t.lower() for t in bucket_cfg.payment_title_exact]
   return rules, cat_map, payment_titles
 
 def apply_bucket(title: str, category_raw: str, rules, cat_map) -> str:

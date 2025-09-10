@@ -7,10 +7,6 @@ def previous_complete_month(today: date) -> str:
   last_prev = first_this - timedelta(days=1)
   return f"{last_prev.year:04d}-{last_prev.month:02d}"
 
-def months_present(rows) -> List[str]:
-  ms: Set[str] = set(r["month"] for r in rows)
-  return sorted(ms)
-
 def count_mondays_in_month(year: int, month: int, start_date: date | None = None) -> int:
   # Count Mondays in the month, filtered by start_date if provided
   d = date(year, month, 1)

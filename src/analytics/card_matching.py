@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Dict
 from datetime import datetime
-from boa_pdf import CCRow
+from core.models import CreditCardTransaction
 
 def _to_date(s: str):
     return datetime.strptime(s, "%Y-%m-%d").date()
@@ -10,13 +10,13 @@ def _diff_days(a: str, b: str) -> int:
     return abs((_to_date(a) - _to_date(b)).days)
 
 def exact_match(
-    cc_rows_m: List[CCRow],
+    cc_rows_m: List[CreditCardTransaction],
     splid_rows_m: List[dict],
     your_name: str,
     amount_tol_cents: int = 0,
     date_window_days: int = 0,
     only_if_payer_is_you: bool = True
-) -> Tuple[List[CCRow], List[CCRow]]:
+) -> Tuple[List[CreditCardTransaction], List[CreditCardTransaction]]:
     """
     Returns (matched_house_on_card, unmatched_fun).
     Match rule: |amount_cc - amount_splid_total| <= tol, |post_date - splid_date| <= window, payer matches if required.
@@ -31,8 +31,8 @@ def exact_match(
         cents = int(round(float(r["amount_total"]) * 100))
         by_amount.setdefault(cents, []).append(r)
 
-    matched: List[CCRow] = []
-    unmatched: List[CCRow] = []
+    matched: List[CreditCardTransaction] = []
+    unmatched: List[CreditCardTransaction] = []
 
     for c in cc_rows_m:
         if c.section != "purchases_adjustments":
