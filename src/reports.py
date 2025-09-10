@@ -109,37 +109,82 @@ def write_overall_trends_md(reports_dir: Path, monthly_summary_path: Path):
   ensure_dir(reports_dir)
   if not monthly_summary_path.exists():
     return
-  import csv, statistics as stats
+  import csv
   rows = list(csv.DictReader(monthly_summary_path.open("r", encoding="utf-8")))
   if not rows:
     return
 
-  def f(r,k): 
-    try: return float(r.get(k,"") or 0.0)
-    except: return 0.0
+  def f(r, k):
+    try:
+      return float(r.get(k, "") or 0.0)
+    except Exception:
+      return 0.0
 
-  income = [f(r,"income") for r in rows]
-  living = [f(r,"living_total") for r in rows]
-  excess = [f(r,"excess") for r in rows]
-
-  avg_income = sum(income)/len(income)
-  avg_living = sum(living)/len(living)
-  avg_excess = sum(excess)/len(excess)
+  n = len(rows)
+  avg_income = sum(f(r, "income") for r in rows) / n
+  avg_living = sum(f(r, "living_total") for r in rows) / n
+  avg_excess = sum(f(r, "excess") for r in rows) / n
 
   lines = []
   lines.append("# Overall Trends\n")
-  lines.append(f"- **Months covered:** {len(rows)}")
+  lines.append(f"- **Months covered:** {n}")
   lines.append(f"- **Your Average Income:** ${avg_income:,.2f}")
   lines.append(f"- **Your Average Living Cost:** ${avg_living:,.2f}")
   lines.append(f"- **Your Average Excess:** ${avg_excess:,.2f}\n")
-  # show most common buckets
-  known = {"rent","utilities","groceries","house_supplies","house_bills","uncategorized"}
-  buckets = sorted({k for r in rows for k in r.keys() if k not in {"month","income","living_total","excess","savings_allowance","spending_allowance"}})
+
+  # Base fields that are NOT buckets
+  base_fields = {
+      "month", "income", "living_total", "excess",
+      "savings_allowance", "spending_allowance"
+  }
+
+  # Extra computed metrics that should not be treated as buckets
+  extras_display = {
+      "house_on_card": "House charges on card (matched)",
+      "fun_spend_card": "Personal spending on card (unmatched)",
+      "personal_spend_card": "Personal spending on card",
+  }
+
+  # Canonicalize bucket name aliases
+  alias_bucket = {
+      "-": "uncategorized",
+      "–": "uncategorized",  # en-dash from some CSVs
+  }
+
+  # Split dynamic keys into buckets vs extras
+  all_keys = set(k for r in rows for k in r.keys())
+  dynamic_keys = sorted(all_keys - base_fields)
+
+  # Aggregate bucket averages (with aliasing)
+  bucket_sums = {}
+  for key in dynamic_keys:
+    if key in extras_display:
+      continue
+    canon = alias_bucket.get(key, key)
+    # sum across all months for this (possibly aliased) bucket
+    bucket_sums[canon] = bucket_sums.get(canon, 0.0) + sum(f(r, key) for r in rows)
+
+  bucket_avgs = {k: (v / n) for k, v in bucket_sums.items() if v > 0.0}
+
+  # Compute extras as separate “Indicators”
+  extras_avgs = {}
+  for raw_key, label in extras_display.items():
+    if raw_key in dynamic_keys:
+      total = sum(f(r, raw_key) for r in rows)
+      if total > 0.0:
+        extras_avgs[label] = total / n
+
+  # Print buckets first (sorted by avg desc)
   lines.append("## Buckets (averages per month)\n")
-  for b in buckets:
-    vals = [f(r,b) for r in rows]
-    if any(vals):
-      lines.append(f"- {b}: ${sum(vals)/len(vals):,.2f}")
+  for b, avg_val in sorted(bucket_avgs.items(), key=lambda kv: kv[1], reverse=True):
+    lines.append(f"- {b}: ${avg_val:,.2f}")
+
+  # Then optional extra indicators (sorted by avg desc)
+  if extras_avgs:
+    lines.append("\n## Other indicators (averages per month)\n")
+    for label, avg_val in sorted(extras_avgs.items(), key=lambda kv: kv[1], reverse=True):
+      lines.append(f"- {label}: ${avg_val:,.2f}")
+
   (reports_dir / "overall_trends.md").write_text("\n".join(lines), encoding="utf-8")
   
 # --- Extra section writers ---
