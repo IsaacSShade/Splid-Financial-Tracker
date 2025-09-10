@@ -7,6 +7,7 @@ from glob import glob
 
 from reports import (
   summarize_month,
+  write_card_summary_section,
   write_month_csv,
   upsert_monthly_summary,
   write_month_md,
@@ -106,16 +107,36 @@ def run_pipeline(cfg: UnifiedConfig):
       date_window_days=cfg.cc_match.date_window_days,
       only_if_payer_is_you=cfg.cc_match.only_if_payer_is_you,
     )
+    
+    has_card_purchases = bool(matched or unmatched)
 
-    house_on_card = round(sum(r.amount for r in matched), 2)
-    fun_spend_card = round(sum(r.amount for r in unmatched if r.section == "purchases_adjustments"), 2)
+    if has_card_purchases:
+      # Totals you want to display (exclude returns/credits from "spend")
+      house_on_card = round(sum(c.amount for c in matched if c.amount > 0), 2)
+      personal_spend_card = round(sum(c.amount for c in unmatched if c.amount > 0), 2)
+    else:
+      house_on_card = personal_spend_card = 0.0
 
     # summary row & markdown
+    extra = {}
+    if has_card_purchases and (house_on_card != 0.0 or personal_spend_card != 0.0):
+      extra = {
+          "house_on_card": house_on_card,
+          "personal_spend_card": personal_spend_card,
+      }
+
     upsert_monthly_summary(
-      data_dir, month, income, living_total, per_bucket,
-      extra={"fun_spend_card": fun_spend_card, "house_on_card": house_on_card}
+        data_dir, month, income, living_total, per_bucket,
+        extra=extra
     )
     write_month_md(reports_dir, month, income, living_total, per_bucket)
+    if has_card_purchases and (house_on_card != 0.0 or personal_spend_card != 0.0):
+      write_card_summary_section(
+        reports_dir, month,
+        house_on_card=house_on_card,
+        personal_spend_card=personal_spend_card,
+      )
+    
     # Only show weekly plan in months where you had income
     if income > 0:
       forecasted_monthly_spend = forecast_monthly_spend(

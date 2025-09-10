@@ -50,6 +50,8 @@ def normalize_rows(raw_rows: List[Dict[str,Any]], bucket_cfg) -> List[Dict[str,A
     is_payment = t.lower() in payment_titles
 
     bucket = apply_bucket(t, r.get("category_raw",""), rules, cat_map)
+    if bucket in {"-", "–", ""}:
+      bucket = "uncategorized"
 
     out.append({
       "date": d.isoformat(),
